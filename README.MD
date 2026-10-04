@@ -1,4 +1,6 @@
-Greetings future reader. This project is for the RowdyHacksXII hackathon! It is a showcase of vulnerability exploitation on a windows server, bypassing DEP and ASLR.
+**DO NOT RUN THE WEB SERVER OUTSIDE OF A CONTROLLED ENVIRONMENT**
+
+Greetings reader. This project is for the RowdyHacksXII hackathon! It is a showcase of vulnerability exploitation on a windows server, bypassing DEP and ASLR.
 
 This project is composed of three parts:
 - A web server with a stack overflow vulnerability

@@ -1,0 +1,31 @@
+body {
+    margin: 0px;
+    background-color: #1e1e1e;
+}
+
+.banner {
+    display: block;
+    background-color: darkslategrey;
+    color: white;
+    margin: 0px;
+    min-height: 40px;
+    align-content: center;
+    padding-left: 2em;
+    padding-right: 2em;
+}
+
+.banner-link {
+    color: white;
+    text-decoration: none;
+}
+
+.banner-link:hover {
+    color: white;
+    text-decoration: underline;
+}
+
+.content {
+    display: block;
+    color: white;
+    padding: 4em;
+}
