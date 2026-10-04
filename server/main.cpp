@@ -9,6 +9,9 @@
 #ifdef _WIN32
 
 #include <WinSock2.h>
+#define close(x) closesocket(x)
+
+#pragma comment(lib, "Ws2_32.lib")
 
 #else
 
@@ -54,7 +57,7 @@ void httpHandleGet(int socket, const std::string& path);
 
 void httpHandlePost(int socket, const std::string& path, size_t contentLength);
 
-void httpHandler(int socket) {
+__declspec(safebuffers) void httpHandler(int socket) {
 	char httpHeader[1024] = { 0 };
 	recvline(socket, httpHeader, sizeof(httpHeader), 0);
 
@@ -88,7 +91,25 @@ void httpHandler(int socket) {
 		httpHandlePost(socket, path, contentLength);
 }
 
-void httpHandleGet(int socket, const std::string& path) {
+__declspec(safebuffers) void httpHandleGet(int socket, const std::string& path) {
+	if (path.starts_with("www/debug/echo/")) {
+		auto echo = path.substr(15);
+		char buffer[2048] = { 0 };
+
+		sendString(socket, "HTTP/1.1 200 OK\r\n", 0);
+		sprintf(buffer, echo.c_str());
+
+		std::string_view content = std::string_view(buffer);
+		sendString(socket, "Content-Type: raw\r\n", 0);
+		sendString(socket, "Content-Length: " + std::to_string(content.size()) + "\r\n", 0);
+		sendString(socket, "\r\n", 0);
+
+		sendString(socket, content, 0);
+
+		close(socket);
+		return;
+	}
+
 	std::ifstream ifs(path, std::ios::binary);
 	if (ifs.fail()) {
 		sendString(socket, "HTTP/1.1 404 Not Found\r\n", 0);
@@ -109,33 +130,41 @@ void httpHandleGet(int socket, const std::string& path) {
 	close(socket);
 }
 
-void httpHandlePost(int socket, const std::string& path, size_t contentLength) {
+__declspec(safebuffers) void httpHandlePost(int socket, const std::string& path, size_t contentLength) {
 	std::cout << "Handling post of length " << contentLength << std::endl;
 
-	char buffer[2048] = { 0 };
-	recv(socket, buffer, contentLength, 0); // oops
+	size_t offset = 0;
+	size_t remaining = contentLength;
+	char buffer[512] = { 0 };
+
+	while (remaining > 0) {
+		size_t got = recv(socket, buffer + offset, remaining, 0); // oops
+		std::cout << "Received " << got << " bytes" << std::endl;
+
+		offset += got;
+		remaining -= got;
+	}
 
 	close(socket);
 }
 
-int main(int argc, char** argv) {
+__declspec(safebuffers) int main(int argc, char** argv) {
+#ifdef _WIN32
+	WSAData wsaData;
+	WSAStartup(MAKEWORD(1, 1), &wsaData);
+#endif
+
 	int server_fd = 0;
 	struct sockaddr_in addr;
 
 	int opt = 1;
-	socklen_t addrlen = sizeof(addr);
+	int addrlen = sizeof(addr);
 
 	if ((server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 		perror("socket failed");
 		exit(EXIT_FAILURE);
 	}
 
-	if (setsockopt(server_fd, SOL_SOCKET,
-				SO_REUSEADDR | SO_REUSEPORT, &opt,
-				sizeof(opt))) {
-		perror("setsockopt");
-		exit(EXIT_FAILURE);
-	}
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = INADDR_ANY;
 	addr.sin_port = htons(2424);
@@ -164,6 +193,10 @@ int main(int argc, char** argv) {
 	}
 	
 	close(server_fd);
+
+#ifdef _WIN32
+	WSACleanup();
+#endif
 
 	return 0;
 }
